@@ -5,8 +5,9 @@ import logging
 import voluptuous as vol
 
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
-from homeassistant.helpers.typing import HomeAssistantType
+from homeassistant.core import HomeAssistant  
 from homeassistant.const import CONF_TOKEN, SERVICE_RELOAD
+from homeassistant.helpers.service import async_register_admin_service
 
 from .airbnk_api import AirbnkApi
 from .const import (
@@ -41,23 +42,18 @@ CONFIG_SCHEMA = vol.Schema(vol.All({DOMAIN: vol.Schema({})}), extra=vol.ALLOW_EX
 
 
 async def async_setup(hass, config):
-    """Setup the Airbnk component."""
-
     async def _handle_reload(service):
-        """Handle reload service call."""
         _LOGGER.debug("Service %s.reload called: reloading integration", DOMAIN)
-
         current_entries = hass.config_entries.async_entries(DOMAIN)
-
         reload_tasks = [
             hass.config_entries.async_reload(entry.entry_id)
             for entry in current_entries
         ]
-
         await asyncio.gather(*reload_tasks)
         _LOGGER.debug("RELOAD DONE")
 
-    hass.helpers.service.async_register_admin_service(
+    async_register_admin_service(
+        hass,
         DOMAIN,
         SERVICE_RELOAD,
         _handle_reload,
@@ -77,7 +73,7 @@ async def async_setup(hass, config):
     return True
 
 
-async def async_migrate_entry(hass, config_entry: ConfigEntry):
+async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):  # Javítva
     """Migrate old entry."""
     _LOGGER.debug("Migrating from version %s", config_entry.version)
 
@@ -112,9 +108,7 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
     return True
 
 
-async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry):
-    """Establish connection with Airbnk."""
-
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     device_configs = entry.data[CONF_DEVICE_CONFIGS]
     entry.add_update_listener(async_options_updated)
     _LOGGER.debug("DEVICES ARE %s", device_configs)
@@ -130,18 +124,17 @@ async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry):
 
     hass.data[DOMAIN] = {AIRBNK_DEVICES: lock_devices}
 
-    for component in COMPONENT_TYPES:
-        await hass.config_entries.async_forward_entry_setup(entry, component)
+    await hass.config_entries.async_forward_entry_setups(entry, COMPONENT_TYPES)
     return True
 
 
-async def async_options_updated(hass, entry):
+async def async_options_updated(hass: HomeAssistant, entry):  # Javítva
     """Triggered by config entry options updates."""
     for dev_id, device in hass.data[DOMAIN][AIRBNK_DEVICES].items():
         device.set_options(entry.options)
 
 
-async def async_unload_entry(hass, config_entry):
+async def async_unload_entry(hass: HomeAssistant, config_entry):  # Javítva
     """Unload a config entry."""
     _LOGGER.debug("Unloading %s %s", config_entry.entry_id, config_entry.data)
 
@@ -163,6 +156,6 @@ async def async_unload_entry(hass, config_entry):
     return True
 
 
-async def airbnk_api_setup(hass, host, key, uuid, password):
+async def airbnk_api_setup(hass: HomeAssistant, host, key, uuid, password):  # Javítva
     """Create a Airbnk instance only once."""
     return
